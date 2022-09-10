@@ -1,9 +1,12 @@
 from django.shortcuts import get_object_or_404
+from rest_framework import permissions
+from .permissions import IsAuthorOrReadOnly
 from rest_framework import viewsets
 from rest_framework.exceptions import PermissionDenied
 from posts.models import Group, Post
 from .serializers import (GroupSerializer, PostSerializer, CommentSerializer)
 
+API_403 = PermissionDenied('Изменение чужого контента запрещено!')
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Group.objects.all()
@@ -13,27 +16,33 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
 class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+    permission_classes = [
+        permissions.IsAuthenticated, IsAuthorOrReadOnly
+    ]
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
     def perform_update(self, serializer):
         if serializer.instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено!')
+            raise API_403
         super().perform_update(serializer)
 
     def perform_destroy(self, instance):
         if instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено!')
+            raise API_403
         instance.delete()
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
+    permission_classes = [
+        permissions.IsAuthenticated, IsAuthorOrReadOnly
+    ]
 
     def get_queryset(self):
         post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
-        return post.comments
+        return post.comments.all()
 
     def perform_create(self, serializer):
         post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
@@ -41,10 +50,10 @@ class CommentViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         if serializer.instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено!')
+            raise API_403
         super().perform_update(serializer)
 
     def perform_destroy(self, instance):
         if instance.author != self.request.user:
-            raise PermissionDenied('Изменение чужого контента запрещено!')
+            raise API_403
         instance.delete()
