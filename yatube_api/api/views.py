@@ -8,6 +8,7 @@ from .serializers import (GroupSerializer, PostSerializer, CommentSerializer)
 
 API_403 = PermissionDenied('Изменение чужого контента запрещено!')
 
+
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
